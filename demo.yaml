@@ -1,0 +1,31 @@
+
+database: $DATAVAULT_DATABASE_URI
+linktab: ref_linkage
+out_path: /Users/fl/tmp/montage
+
+views:
+  md_company_founder:
+    label: "[MD] Company Founders"
+    tables:
+      - md_company
+      - md_company_founder
+    joins:
+      - left: md_company.company_id
+        right: md_company_founder.company_id
+    fields:
+      - column: md_company.name
+        label: Company Name
+        key: true
+      - column: md_company.idno_cod_fiscal
+        label: Tax ID
+      - column: md_company_founder.name
+        label: Founder Name
+        key: true
+  md_blacklist:
+    label: "[MD] Blacklist"
+    tables:
+      - md_blacklist
+    fields:
+      - column: md_blacklist.name
+        label: Name
+        key: true

@@ -1,0 +1,4 @@
+
+
+class LinkageException(Exception):
+    pass
