@@ -138,7 +138,8 @@ class View(object):
 
     def generate_key_index(self):
         for index in self.key.table.indexes:
-            if index.columns == [self.key]:
+            if index.columns.index(self.key) != -1  \
+                    and len(index.columns) == 1:
                 return
         index = Index(self.index_name, self.key)
         index.create(self.config.engine)
