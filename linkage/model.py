@@ -1,6 +1,7 @@
 import os
 import six
 import logging
+from normality import slugify
 from hashlib import sha1
 from collections import OrderedDict
 
@@ -9,7 +10,7 @@ import fingerprints
 from sqlalchemy import MetaData, select, func, create_engine
 from sqlalchemy import Unicode, Float
 from sqlalchemy.sql.expression import cast
-from sqlalchemy.schema import Table, Column
+from sqlalchemy.schema import Table, Column, Index
 
 from linkage.exc import LinkageException
 
@@ -89,6 +90,11 @@ class View(object):
         return self.get_column(self.key_ref)
 
     @property
+    def index_name(self):
+        return 'ix_%s_%s' % (slugify(self.name, '_'),
+                             slugify(self.key_ref, '_'))
+
+    @property
     def from_clause(self):
         return [t.table for t in self.tables]
 
@@ -129,6 +135,13 @@ class View(object):
         q = q.where(self.config.linktab.c.serial == self.serial)
         rp = self.config.engine.execute(q)
         return rp.scalar() > 0
+
+    def generate_key_index(self):
+        for index in self.key.table.indexes:
+            if index.columns == [self.key]:
+                return
+        index = Index(self.index_name, self.key)
+        index.create(self.config.engine)
 
     def generate_linktab(self, chunk_size=10000):
         with self.config.engine.begin() as connection:
@@ -224,6 +237,8 @@ class CrossRef(object):
         q = q.limit(self.config.cutoff + 1)
         q = q.order_by(score.desc())
         q = q.distinct()
+
+        # print q
         return q
 
     @property

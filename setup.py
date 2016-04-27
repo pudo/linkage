@@ -33,7 +33,8 @@ setup(
         'fingerprints',
         'six',
         'sqlalchemy',
-        'xlsxwriter'
+        'xlsxwriter',
+        'normality'
     ],
     tests_require=[
         'nose',

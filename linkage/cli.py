@@ -13,6 +13,7 @@ def cli(config):
     linkage = Linkage(yaml.load(config))
 
     for view in linkage.views:
+        view.generate_key_index()
         if not view.check_linktab():
             view.generate_linktab()
 
