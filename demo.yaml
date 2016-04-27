@@ -1,11 +1,11 @@
 
 database: $DATAVAULT_DATABASE_URI
 linktab: ref_linkage
-out_path: /Users/fl/tmp/montage
+report: Linkage Report.xlsx
 
 views:
   md_company_founder:
-    label: "[MD] Company Founders"
+    label: "[MD] Companies"
     tables:
       - md_company
       - md_company_founder
@@ -22,10 +22,57 @@ views:
         label: Founder Name
         key: true
   md_blacklist:
-    label: "[MD] Blacklist"
+    label: "[MD] Procurement Blacklist"
     tables:
       - md_blacklist
     fields:
       - column: md_blacklist.name
         label: Name
         key: true
+  md_party_donation:
+    label: "[MD] Party Donations"
+    tables:
+      - md_party_donation
+      - md_party_filing
+    joins:
+      - left: md_party_donation.filename
+        right: md_party_filing.filename
+    fields:
+      - column: md_party_filing.party
+        label: Party
+        key: false
+      - column: md_party_donation.name
+        label: Donor
+        key: true
+      - column: md_party_donation.employer
+        label: Employer
+        key: true
+      - column: md_party_donation.amount_num
+        label: Amount
+        key: false
+  pep_spindle:
+    label: "OCCRP PEPs"
+    tables:
+      - pep_spindle
+    fields:
+      - column: pep_spindle.name
+        label: Name
+        key: true
+  pep_xref:
+    label: "ON Sanctions"
+    tables:
+      - pep_entity
+      - pep_xref
+    joins:
+      - left: pep_entity.uid
+        right: pep_xref.uid
+    fields:
+      - column: pep_xref.alias
+        label: Name
+        key: true
+      - column: pep_entity.name
+        label: Canonical Name
+        key: false
+      - column: pep_entity.publisher
+        label: Publisher
+        key: false

@@ -32,7 +32,8 @@ setup(
         'pyyaml',
         'fingerprints',
         'six',
-        'sqlalchemy'
+        'sqlalchemy',
+        'xlsxwriter'
     ],
     tests_require=[
         'nose',

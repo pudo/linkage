@@ -175,6 +175,22 @@ class CrossRef(object):
         self.left_key = left_key
         self.right_key = right_key
 
+    @property
+    def ignore(self):
+        if len(self) == 0:
+            return True
+        return False
+
+    @property
+    def label(self):
+        return '(%s) %s - %s' % (len(self), self.left.label, self.right.label)
+
+    @property
+    def headers(self):
+        if not len(self):
+            return []
+        return self.results[0].keys()
+
     def query(self):
         tables = self.left.from_clause + self.right.from_clause
         left_lt = self.config.linktab.alias('__left_linktab')
@@ -182,12 +198,12 @@ class CrossRef(object):
         tables += [left_lt, right_lt]
 
         columns = []
-        score_length = func.greatest(func.length(left_lt.c.fingerprint),
-                                     func.length(right_lt.c.fingerprint))
-        score_leven = func.levenshtein(left_lt.c.fingerprint,
-                                       right_lt.c.fingerprint)
+        score_length = func.greatest(func.length(self.left_key.column),
+                                     func.length(self.right_key.column))
+        score_leven = func.levenshtein(self.left_key.column,
+                                       self.right_key.column)
         score_leven = cast(score_leven, Float)
-        score = score_leven / score_length
+        score = 1 - (score_leven / score_length)
         columns.append(score.label("Match Score"))
 
         for field in self.left.fields:
@@ -207,18 +223,32 @@ class CrossRef(object):
 
         # TODO: make this levenshteinable
         q = q.where(right_lt.c.fingerprint == left_lt.c.fingerprint)
-
-        q = q.order_by(score.asc())
+        q = q.limit(self.config.cutoff + 1)
+        q = q.order_by(score.desc())
         return q
 
+    @property
     def results(self):
-        rp = self.config.engine.execute(self.query())
-        while True:
-            print rp.rowcount
-            row = rp.fetchone()
-            if not row:
-                break
-            yield row
+        if not hasattr(self, '_results'):
+            log.info("Running: %s ./. %s", self.left.label, self.right.label)
+            rp = self.config.engine.execute(self.query())
+            self._results = []
+            i = 0
+            while True:
+                row = rp.fetchone()
+                if not row or i > self.config.cutoff:
+                    break
+                self._results.append(OrderedDict(row.items()))
+                i + 1
+            log.info("Found: %s", len(self._results))
+        return self._results
+
+    @property
+    def overflow(self):
+        return len(self) >= self.config.cutoff
+
+    def __len__(self):
+        return len(self.results)
 
 
 class Linkage(object):
@@ -226,6 +256,8 @@ class Linkage(object):
 
     def __init__(self, data):
         self.data = data
+        self.cutoff = data.get('cutoff', 5000)
+        self.report = data.get('report', 'Linkage Report.xlsx')
         self.engine_url = os.path.expandvars(data.get('database'))
         self.engine = create_engine(self.engine_url)
         self.meta = MetaData()
@@ -255,10 +287,15 @@ class Linkage(object):
 
     @property
     def crossrefs(self):
-        for left in self.views:
-            for right in self.views:
-                if left.name >= right.name:
-                    continue
-                for left_key in left.key_fields:
-                    for right_key in right.key_fields:
-                        yield CrossRef(self, left, right, left_key, right_key)
+        if not hasattr(self, '_crossrefs'):
+            self._crossrefs = []
+            for left in self.views:
+                for right in self.views:
+                    if left.name >= right.name:
+                        continue
+                    for left_key in left.key_fields:
+                        for right_key in right.key_fields:
+                            cr = CrossRef(self, left, right,
+                                          left_key, right_key)
+                            self._crossrefs.append(cr)
+        return self._crossrefs

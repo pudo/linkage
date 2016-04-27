@@ -3,6 +3,7 @@ import yaml
 import logging
 
 from linkage.model import Linkage
+from linkage.report import ExcelReport
 
 
 @click.command()
@@ -15,6 +16,5 @@ def cli(config):
         if not view.check_linktab():
             view.generate_linktab()
 
-    for crossref in linkage.crossrefs:
-        for ref in crossref.results():
-            print ref
+    report = ExcelReport(linkage)
+    report.generate()
