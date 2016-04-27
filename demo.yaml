@@ -4,75 +4,77 @@ linktab: ref_linkage
 report: Linkage Report.xlsx
 
 views:
-  md_company_founder:
-    label: "[MD] Companies"
+  md.corp.founder:
+    label: "Moldova Company Founders"
     tables:
       - md_company
       - md_company_founder
     joins:
       - left: md_company.company_id
         right: md_company_founder.company_id
+    key: md_company_founder.name
     fields:
       - column: md_company.name
         label: Company Name
-        key: true
       - column: md_company.idno_cod_fiscal
         label: Tax ID
       - column: md_company_founder.name
         label: Founder Name
-        key: true
-  md_blacklist:
-    label: "[MD] Procurement Blacklist"
+  md.tender.blacklist:
+    label: "Moldova Procurement Blacklist"
     tables:
       - md_blacklist
+    key: md_blacklist.name
     fields:
       - column: md_blacklist.name
         label: Name
-        key: true
-  md_party_donation:
-    label: "[MD] Party Donations"
+  md.party.donation:
+    label: "Moldova Party Donations"
     tables:
       - md_party_donation
       - md_party_filing
     joins:
       - left: md_party_donation.filename
         right: md_party_filing.filename
+    key: md_party_donation.employer
     fields:
       - column: md_party_filing.party
         label: Party
-        key: false
       - column: md_party_donation.name
         label: Donor
-        key: true
       - column: md_party_donation.employer
         label: Employer
-        key: true
       - column: md_party_donation.amount_num
         label: Amount
-        key: false
-  pep_spindle:
-    label: "OCCRP PEPs"
+  occrp.poi:
+    label: "OCCRP Persons of Interest"
     tables:
       - pep_spindle
+    key: pep_spindle.name
     fields:
       - column: pep_spindle.name
         label: Name
-        key: true
-  pep_xref:
-    label: "ON Sanctions"
+      - column: pep_spindle.collection
+        label: Watchlist
+      - column: pep_spindle.summary
+        label: Summary
+  on.sanctions:
+    label: "International Sanctions and PEPs"
     tables:
       - pep_entity
       - pep_xref
     joins:
       - left: pep_entity.uid
         right: pep_xref.uid
+    key: pep_xref.alias
     fields:
-      - column: pep_xref.alias
-        label: Name
-        key: true
       - column: pep_entity.name
         label: Canonical Name
-        key: false
+      - column: pep_entity.source_id
+        label: Source
       - column: pep_entity.publisher
         label: Publisher
-        key: false
+      - column: pep_entity.summary
+        label: Summary
+      - column: pep_entity.type
+        label: Type

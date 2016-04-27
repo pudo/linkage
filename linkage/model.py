@@ -54,23 +54,8 @@ class ViewField(object):
         self.data = data
         self.column_ref = data.get('column')
         self.label = data.get('label', self.column_ref)
-        self.key = data.get('key', False)
         self.column = view.get_column(self.column_ref)
         self.table = view.get_table(self.column_ref)
-
-    def distinct(self, count=False):
-        dist = func.distinct(self.column)
-        if count:
-            dist = func.count(dist)
-        q = select(columns=[dist], from_obj=self.view.from_clause)
-        q = self.view.apply_filters(q)
-        q = q.where(self.column != None)  # noqa
-        rp = self.config.engine.execute(q)
-        while True:
-            row = rp.fetchone()
-            if not row:
-                break
-            yield row[0]
 
 
 class View(object):
@@ -85,10 +70,7 @@ class View(object):
                        for f in data.get('tables', [])]
         self.fields = [ViewField(config, self, f)
                        for f in data.get('fields', [])]
-        self.key_fields = [f for f in self.fields if f.key]
-
-        if not len(self.key_fields):
-            raise LinkageException("No key column for: %r" % self.name)
+        self.key_ref = data.get('key')
 
     def get_column(self, ref):
         for table in self.tables:
@@ -99,6 +81,10 @@ class View(object):
         for table in self.tables:
             if ref == table.alias or ref in table.refs:
                 return table
+
+    @property
+    def key(self):
+        return self.get_column(self.key_ref)
 
     @property
     def from_clause(self):
@@ -118,16 +104,26 @@ class View(object):
         if not hasattr(self, '_serial'):
             hashgen = sha1()
             hashgen.update(self.name.encode('utf-8'))
-            for field in self.key_fields:
-                hashgen.update(field.column_ref.encode('utf-8'))
+            hashgen.update(self.key_ref.encode('utf-8'))
             self._serial = hashgen.hexdigest()
         return self._serial
 
+    def distinct_key(self, count=False):
+        dist = func.distinct(self.key)
+        if count:
+            dist = func.count(dist)
+        q = select(columns=[dist], from_obj=self.from_clause)
+        q = self.apply_filters(q)
+        q = q.where(self.key != None)  # noqa
+        rp = self.config.engine.execute(q)
+        while True:
+            row = rp.fetchone()
+            if not row:
+                break
+            yield row[0]
+
     def check_linktab(self):
-        source_sum = 0
-        for field in self.key_fields:
-            for field_sum in field.distinct(count=True):
-                source_sum += field_sum
+        source_sum = self.distinct_key(count=True).next()
         cnt = func.count(self.config.linktab.c.key)
         q = select(columns=[cnt], from_obj=self.config.linktab)
         q = q.where(self.config.linktab.c.view == self.name)
@@ -141,39 +137,33 @@ class View(object):
             q = self.config.linktab.delete()
             q = q.where(self.config.linktab.c.view == self.name)
             connection.execute(q)
-            for field in self.key_fields:
-                self.generate_field_linktab(connection, field)
-
-    def generate_field_linktab(self, connection, field, chunk_size=10000):
-        chunk = []
-        for i, value in enumerate(field.distinct()):
-            fp = fingerprints.generate(value)
-            # this is due to postgres' levenshtein
-            fp = fp[:255]
-            chunk.append({
-                'view': self.name,
-                'serial': self.serial,
-                'key': value,
-                'fingerprint': fp
-            })
-            if len(chunk) == chunk_size:
-                log.info('Linktab %s (%s): %s',
-                         self.name, field.column_ref, i + 1)
+            chunk = []
+            for i, value in enumerate(self.distinct_key()):
+                fp = fingerprints.generate(value)
+                # this is due to postgres' levenshtein
+                fp = fp[:255]
+                chunk.append({
+                    'view': self.name,
+                    'serial': self.serial,
+                    'key': value,
+                    'fingerprint': fp
+                })
+                if len(chunk) == chunk_size:
+                    log.info('Linktab %s (%s): %s',
+                             self.name, self.key_ref, i + 1)
+                    connection.execute(self.config.linktab.insert(), chunk)
+                    chunk = []
+            if len(chunk):
                 connection.execute(self.config.linktab.insert(), chunk)
-                chunk = []
-        if len(chunk):
-            connection.execute(self.config.linktab.insert(), chunk)
 
 
 class CrossRef(object):
     """Try to match up records in two columns."""
 
-    def __init__(self, config, left, right, left_key, right_key):
+    def __init__(self, config, left, right):
         self.config = config
         self.left = left
         self.right = right
-        self.left_key = left_key
-        self.right_key = right_key
 
     @property
     def ignore(self):
@@ -198,27 +188,24 @@ class CrossRef(object):
         tables += [left_lt, right_lt]
 
         columns = []
-        score_length = func.greatest(func.length(self.left_key.column),
-                                     func.length(self.right_key.column))
-        score_leven = func.levenshtein(self.left_key.column,
-                                       self.right_key.column)
+        score_length = func.greatest(func.length(self.left.key),
+                                     func.length(self.right.key))
+        score_leven = func.levenshtein(self.left.key, self.right.key)
         score_leven = cast(score_leven, Float)
         score = 1 - (score_leven / score_length)
-        columns.append(score.label("Match Score"))
+        columns.append(score.label("score"))
 
         for field in self.left.fields:
-            label = '%s: %s' % (self.left.label, field.label)
-            columns.append(field.column.label(label))
+            columns.append(field.column.label(field.column_ref))
         for field in self.right.fields:
-            label = '%s: %s' % (self.right.label, field.label)
-            columns.append(field.column.label(label))
+            columns.append(field.column.label(field.column_ref))
 
         q = select(columns=columns, from_obj=tables)
         q = self.left.apply_filters(q)
         q = self.right.apply_filters(q)
-        q = q.where(left_lt.c.key == self.left_key.column)
+        q = q.where(left_lt.c.key == self.left.key)
         q = q.where(left_lt.c.view == self.left.name)
-        q = q.where(right_lt.c.key == self.right_key.column)
+        q = q.where(right_lt.c.key == self.right.key)
         q = q.where(right_lt.c.view == self.right.name)
 
         # TODO: make this levenshteinable
@@ -293,9 +280,5 @@ class Linkage(object):
                 for right in self.views:
                     if left.name >= right.name:
                         continue
-                    for left_key in left.key_fields:
-                        for right_key in right.key_fields:
-                            cr = CrossRef(self, left, right,
-                                          left_key, right_key)
-                            self._crossrefs.append(cr)
+                    self._crossrefs.append(CrossRef(self, left, right))
         return self._crossrefs
