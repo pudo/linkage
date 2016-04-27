@@ -55,8 +55,6 @@ class ViewField(object):
         self.column_ref = data.get('column')
         self.label = data.get('label', self.column_ref)
         self.column = view.get_column(self.column_ref)
-        if self.column is None:
-            raise LinkageException("Cannot find: %s" % self.column_ref)
         self.table = view.get_table(self.column_ref)
 
 
@@ -78,11 +76,13 @@ class View(object):
         for table in self.tables:
             if ref in table.refs:
                 return table.refs.get(ref)
+        raise LinkageException("Cannot find column: %s" % ref)
 
     def get_table(self, ref):
         for table in self.tables:
             if ref == table.alias or ref in table.refs:
                 return table
+        raise LinkageException("Cannot find table: %s" % ref)
 
     @property
     def key(self):
