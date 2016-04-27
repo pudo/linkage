@@ -223,6 +223,7 @@ class CrossRef(object):
         q = q.where(right_lt.c.fingerprint == left_lt.c.fingerprint)
         q = q.limit(self.config.cutoff + 1)
         q = q.order_by(score.desc())
+        q = q.distinct()
         return q
 
     @property

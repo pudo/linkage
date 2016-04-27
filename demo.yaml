@@ -40,7 +40,7 @@ views:
       - md_party_filing
     joins:
       - left: md_party_donation.filename
-        right: md_party_filing.filename
+        right: md_party_filing.filepath
     key: md_party_donation.employer
     fields:
       - column: md_party_filing.party
