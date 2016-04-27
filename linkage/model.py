@@ -106,7 +106,7 @@ class View(object):
             hashgen.update(self.name.encode('utf-8'))
             hashgen.update(self.key_ref.encode('utf-8'))
             self._serial = hashgen.hexdigest()
-        return self._serial
+        return unicode(self._serial)
 
     def distinct_key(self, count=False):
         dist = func.distinct(self.key)
@@ -140,6 +140,8 @@ class View(object):
             chunk = []
             for i, value in enumerate(self.distinct_key()):
                 fp = fingerprints.generate(value)
+                if fp is None:
+                    continue
                 # this is due to postgres' levenshtein
                 fp = fp[:255]
                 chunk.append({
