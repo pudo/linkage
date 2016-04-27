@@ -108,10 +108,8 @@ class View(object):
             self._serial = hashgen.hexdigest()
         return unicode(self._serial)
 
-    def distinct_key(self, count=False):
+    def distinct_key(self):
         dist = func.distinct(self.key)
-        if count:
-            dist = func.count(dist)
         q = select(columns=[dist], from_obj=self.from_clause)
         q = self.apply_filters(q)
         q = q.where(self.key != None)  # noqa
@@ -123,14 +121,12 @@ class View(object):
             yield row[0]
 
     def check_linktab(self):
-        source_sum = self.distinct_key(count=True).next()
         cnt = func.count(self.config.linktab.c.key)
         q = select(columns=[cnt], from_obj=self.config.linktab)
         q = q.where(self.config.linktab.c.view == self.name)
         q = q.where(self.config.linktab.c.serial == self.serial)
         rp = self.config.engine.execute(q)
-        linktab_sum = rp.scalar()
-        return source_sum == linktab_sum
+        return rp.scalar() > 0
 
     def generate_linktab(self, chunk_size=10000):
         with self.config.engine.begin() as connection:
@@ -151,8 +147,7 @@ class View(object):
                     'fingerprint': fp
                 })
                 if len(chunk) == chunk_size:
-                    log.info('Linktab %s (%s): %s',
-                             self.name, self.key_ref, i + 1)
+                    log.info('Linktab %s (%s): %s', self.name, self.key_ref, i)
                     connection.execute(self.config.linktab.insert(), chunk)
                     chunk = []
             if len(chunk):
