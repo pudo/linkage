@@ -3,7 +3,12 @@ database: $DATAVAULT_DATABASE_URI
 linktab: ref_linkage
 report: Linkage Report.xlsx
 
+skip:
+  - ['occrp.poi', 'on.sanctions']
+
 views:
+
+  # Moldova
   md.corp.founder:
     label: "Moldova Company Founders"
     tables:
@@ -46,6 +51,8 @@ views:
         label: Employer
       - column: md_party_donation.amount_num
         label: Amount
+
+  # Persons of Interest
   occrp.poi:
     label: "OCCRP Persons of Interest"
     tables:

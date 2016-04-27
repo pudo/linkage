@@ -166,7 +166,19 @@ class CrossRef(object):
         self.right = right
 
     @property
+    def skip(self):
+        name = max([self.left.name, self.right.name]), \
+            min([self.left.name, self.right.name])
+        for skip_name in self.config.skip:
+            skip_name = max(skip_name), min(skip_name)
+            if skip_name == name:
+                return True
+        return False
+
+    @property
     def ignore(self):
+        if self.skip:
+            return True
         if len(self) == 0:
             return True
         return False
@@ -216,6 +228,8 @@ class CrossRef(object):
 
     @property
     def results(self):
+        if self.skip:
+            return []
         if not hasattr(self, '_results'):
             log.info("Running: %s ./. %s", self.left.label, self.right.label)
             rp = self.config.engine.execute(self.query())
@@ -251,6 +265,7 @@ class Linkage(object):
         self.meta.bind = self.engine
         self.views = [View(self, n, v) for n, v in data.get('views').items()]
         self.linktab_name = data.get('linktab', '_linkage')
+        self.skip = data.get('skip', [])
 
     @property
     def linktab(self):
