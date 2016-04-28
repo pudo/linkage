@@ -43,12 +43,13 @@ class ExcelReport(object):
         worksheet = self.workbook.add_worksheet('Overview')
         worksheet.set_zoom(125)
         widths = {}
-        offset = 1
-        worksheet.write(offset, 0, "Dataset Cross-Referencing Report",
+        offset = 0
+        worksheet.write(offset, 0, self.linkage.label,
                         self.title_format)
         offset += 1
+        worksheet.write(offset, 0, "Cross-Referencing Report")
         last_update = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-        worksheet.write(offset, 0, "Last update: %s" % last_update)
+        worksheet.write(offset, 1, "Last update: %s" % last_update)
         offset += 2
         worksheet.write(offset, 0, "Matches found between datasets",
                         self.subtitle_format)

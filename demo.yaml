@@ -1,4 +1,5 @@
 
+label: Linkage Demo Report
 database: $DATAVAULT_DATABASE_URI
 linktab: ref_linkage
 report: Linkage Report.xlsx

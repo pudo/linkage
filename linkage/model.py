@@ -274,6 +274,7 @@ class Linkage(object):
 
     def __init__(self, data):
         self.data = data
+        self.label = data.get('label', 'Linkage')
         self.cutoff = data.get('cutoff', 5000)
         self.report = data.get('report', 'Linkage Report.xlsx')
         self.engine_url = os.path.expandvars(data.get('database'))
