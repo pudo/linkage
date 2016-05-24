@@ -181,6 +181,8 @@ class CrossRef(object):
 
     @property
     def skip(self):
+        if self.left.name == self.right.name:
+            return True
         name = max([self.left.name, self.right.name]), \
             min([self.left.name, self.right.name])
         for skip_name in self.config.skip:
@@ -277,6 +279,7 @@ class Linkage(object):
         self.label = data.get('label', 'Linkage')
         self.cutoff = data.get('cutoff', 5000)
         self.report = data.get('report', 'Linkage Report.xlsx')
+        self.spines = data.get('spines', [])
         self.engine_url = os.path.expandvars(data.get('database'))
         self.engine = create_engine(self.engine_url)
         self.meta = MetaData()
@@ -311,7 +314,9 @@ class Linkage(object):
             self._crossrefs = []
             for left in self.views:
                 for right in self.views:
-                    if left.name >= right.name:
+                    if len(self.spines) and left.name not in self.spines:
+                        continue
+                    elif left.name >= right.name:
                         continue
                     self._crossrefs.append(CrossRef(self, left, right))
         return self._crossrefs
