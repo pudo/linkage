@@ -58,11 +58,6 @@ class ViewField(object):
         self.column = view.get_column(self.column_ref)
         self.table = view.get_table(self.column_ref)
 
-    def real_table(self):
-        if isinstance(self.table, Alias):
-            return self.table.original
-        return self.table
-
 
 class View(object):
     """A view describes one set of data to be compared in cross-referencing."""
@@ -142,7 +137,10 @@ class View(object):
         return rp.scalar() > 0
 
     def generate_key_index(self):
-        table = self.key.real_table()
+        table = self.key.table
+        if isinstance(table, Alias):
+            table = table.original
+
         for index in table.indexes:
             if len(index.columns) == 1:
                 for col in index.columns:
