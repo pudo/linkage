@@ -137,16 +137,18 @@ class View(object):
         return rp.scalar() > 0
 
     def generate_key_index(self):
-        table = self.key.table
+        key = self.key
+        table = key.table
         if isinstance(table, Alias):
             table = table.original
+            key = table.c[key.name]
 
         for index in table.indexes:
             if len(index.columns) == 1:
                 for col in index.columns:
-                    if col == self.key:
+                    if col == key:
                         return
-        index = Index(self.index_name, self.key)
+        index = Index(self.index_name, key)
         index.create(self.config.engine)
 
     def generate_linktab(self, chunk_size=10000):
