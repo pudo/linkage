@@ -9,7 +9,7 @@ import fingerprints
 
 from sqlalchemy import MetaData, select, func, create_engine
 from sqlalchemy import Unicode, Float
-from sqlalchemy.sql.expression import cast
+from sqlalchemy.sql import cast, Alias
 from sqlalchemy.schema import Table, Column, Index
 
 from linkage.exc import LinkageException
@@ -57,6 +57,11 @@ class ViewField(object):
         self.label = data.get('label', self.column_ref)
         self.column = view.get_column(self.column_ref)
         self.table = view.get_table(self.column_ref)
+
+    def real_table(self):
+        if isinstance(self.table, Alias):
+            return self.table.original
+        return self.table
 
 
 class View(object):
@@ -137,7 +142,8 @@ class View(object):
         return rp.scalar() > 0
 
     def generate_key_index(self):
-        for index in self.key.table.indexes:
+        table = self.key.real_table()
+        for index in table.indexes:
             if len(index.columns) == 1:
                 for col in index.columns:
                     if col == self.key:
