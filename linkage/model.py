@@ -31,10 +31,12 @@ class ViewTable(object):
 
     @property
     def table(self):
-        table = Table(self.table_ref, self.config.meta, autoload=True)
-        if self.alias != table.name:
-            table = table.alias(self.alias)
-        return table
+        if not hasattr(self, '_table'):
+            self._table = Table(self.table_ref, self.config.meta,
+                                autoload=True)
+            if self.alias != self._table.name:
+                self._table = self._table.alias(self.alias)
+        return self._table
 
     @property
     def refs(self):
