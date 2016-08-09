@@ -244,12 +244,16 @@ class CrossRef(object):
         q = q.where(right_lt.c.key == self.right.key)
         q = q.where(right_lt.c.view == self.right.name)
 
-        # TODO: make this levenshteinable
-        q = q.where(right_lt.c.fingerprint == left_lt.c.fingerprint)
+        if self.config.levenshtein <= 0:
+            q = q.where(right_lt.c.fingerprint == left_lt.c.fingerprint)
+        else:
+            right_fp = func.substr(right_lt.c.fingerprint, 0, 255)
+            left_fp = func.substr(left_lt.c.fingerprint, 0, 255)
+            dist = func.levenshtein(right_fp, left_fp)
+            q = q.where(dist <= self.config.levenshtein)
         q = q.limit(self.config.cutoff + 1)
         q = q.order_by(score.desc())
         q = q.distinct()
-
         # print q
         return q
 
@@ -286,6 +290,7 @@ class Linkage(object):
         self.data = data
         self.label = data.get('label', 'Linkage')
         self.cutoff = data.get('cutoff', 5000)
+        self.levenshtein = data.get('levenshtein', 0)
         self.report = data.get('report', 'Linkage Report.xlsx')
         self.spines = data.get('spines', [])
         self.engine_url = os.path.expandvars(data.get('database'))
