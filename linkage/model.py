@@ -327,9 +327,11 @@ class Linkage(object):
             self._crossrefs = []
             for left in self.views:
                 for right in self.views:
-                    if len(self.spines) and left.name not in self.spines:
-                        continue
-                    elif left.name >= right.name:
-                        continue
+                    if len(self.spines):
+                        if left.name not in self.spines:
+                            continue
+                    else:
+                        if left.name >= right.name:
+                            continue
                     self._crossrefs.append(CrossRef(self, left, right))
         return self._crossrefs
